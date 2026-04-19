@@ -25,11 +25,7 @@ Optional on-chain layer for:
 - [ ] Minimal simulation environment
 - [ ] On-chain settlement experiment (Base or Solana)
 
-## Why
-
-Built by @your-handle to learn by doing.
-Not production-ready. Not a token. Not investment advice.
 
 ## Contact
 
-[Your X / email]
+[cy1125547678@outlook.com]
