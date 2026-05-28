@@ -2,13 +2,14 @@
 
 Murmur is an open-source MVP for an AI-native game NPC network: a browser room where a player chats with five NPCs that have distinct personalities while sharing the same conversation state, atmosphere, and group memory.
 
-The current implementation is intentionally lightweight and local-first. It does not require an LLM API key. Instead, it recreates the core interaction loop with a deterministic TypeScript orchestration model so anyone can clone the repo, run it, and feel the shape of a multi-NPC AI game conversation.
+The current implementation is intentionally lightweight and local-first. It does not require an LLM API key. Instead, it recreates a research-inspired agent loop with deterministic TypeScript so anyone can inspect, clone, run, and critique the shape of a multi-NPC AI game conversation.
 
 ## What you can try
 
 - Chat with 5 NPCs in the same room.
+- Ask feasibility questions such as `头号玩家电影里的绿洲游戏能实现吗` and get direct, role-specific answers instead of generic handoff lines.
 - Watch the shared world state update: topic, mood, player intent, energy, cohesion, and tension.
-- See NPCs respond from different roles and personalities while staying synchronized on the same conversation process.
+- Inspect the agent trace: perception, retrieved memories, speaker-selection reason, and response plan.
 - Let NPCs proactively introduce a new topic when the room needs momentum.
 - Reset the room and replay different group-chat trajectories.
 
@@ -16,11 +17,11 @@ The current implementation is intentionally lightweight and local-first. It does
 
 | NPC | Role | Conversation behavior |
 | --- | --- | --- |
-| Mira | Emotion weaver | Keeps emotional continuity and invites others in. |
-| Taro | System tactician | Converts conversation into mechanics and state. |
-| Vesper | Lore nightwatcher | Turns ideas into worldbuilding and myth. |
-| Jun | Street ranger | Keeps the chat grounded, social, and playful. |
-| Luma | Prototype engineer | Pushes ideas toward visible, testable features. |
+| Mira | Empathic narrator | Tracks player feeling and long-term relational continuity without empty reassurance. |
+| Taro | Systems architect | Answers feasibility and architecture questions directly. |
+| Vesper | Worldbuilding nightwatcher | Adds immersive social/world framing without drowning the reply in poetry. |
+| Jun | Player friend | Keeps the chat grounded, candid, and less corporate. |
+| Luma | Prototype engineer | Converts ambitious ideas into playable demo steps. |
 
 ## Local setup
 
@@ -47,15 +48,25 @@ npm run lint
 
 ## Architecture
 
-The MVP follows patterns used by modern game AI NPC platforms in a simplified open-source form:
+The MVP follows patterns from modern agent simulation research in a simplified open-source form:
 
-1. **Shared context bus**: every player message updates a shared `Atmosphere` object containing topic, mood, intent, energy, cohesion, tension, and a compact memory summary.
-2. **Character minds**: each NPC has personality, role, speaking style, goal, interests, topic openers, and bridge phrases.
-3. **Speaker selection**: an orchestration function scores NPCs by attention, urge to speak, role fit, freshness, and relevance to the current topic.
-4. **Group memory**: every reply references the synchronized atmosphere rather than only the last message.
-5. **Proactive continuation**: the room can trigger NPC-led topic proposals so the conversation does not collapse into awkward endings.
+1. **Perception**: every player message is classified for intent, topic, mood, repair signals, repetition, and special cases such as feasibility questions.
+2. **Memory retrieval**: a small shared memory stream scores salience and keyword overlap, inspired by Generative Agents.
+3. **Shared context bus**: the room updates a synchronized `Atmosphere` object containing topic, mood, intent, energy, cohesion, tension, and compact memory summary.
+4. **Character minds**: each NPC has personality, stance, expertise, verbal habits, goals, and a silence policy.
+5. **Selector group chat**: an orchestration function scores NPCs by urge, attention, expertise fit, role fit, freshness, and whether the NPC actually adds information.
+6. **Response planning**: replies are composed from the current perception and recalled memory, with explicit safeguards against repeated stopgap closers such as “你想让我们沿着哪条线继续展开？”
+7. **Proactive continuation**: the room can trigger NPC-led topic proposals that continue the current context instead of abruptly ending or changing subject.
 
-This is inspired by the public direction of systems such as Inworld multi-character conversation groups, NVIDIA ACE-style character stacks, Convai-style NPC interaction, and agent-swarm message buses. Murmur keeps the implementation inspectable and hackable for experiments.
+Research/open-source references used for this revision:
+
+- **Generative Agents**: memory stream, salience, relevance/recency retrieval, reflection, planning, action.
+- **AI Town**: shared global state plus a simulation loop for agents living, chatting, and socializing.
+- **Concordia**: generative social simulation with a Game Master-like environment mediator.
+- **AutoGen SelectorGroupChat**: shared context broadcast with dynamic next-speaker selection.
+- **CAMEL RolePlaying**: role boundaries and controls against repetition, role flipping, and degenerate loops.
+
+Murmur still keeps the runtime inspectable and hackable: `simulateAgentTurn` is the seam where a local WebGPU model, Ollama, or cloud LLM can replace the deterministic response composer later.
 
 ## Future extensions
 
