@@ -6,6 +6,8 @@ type SpeakerId = 'player' | 'mira' | 'taro' | 'vesper' | 'jun' | 'luma'
 
 type Mood = 'curious' | 'warm' | 'tense' | 'playful' | 'focused' | 'dreamy'
 
+type Intent = 'question' | 'clarify' | 'challenge' | 'imagine' | 'plan' | 'emotion' | 'casual'
+
 type Message = {
   id: number
   speakerId: SpeakerId
@@ -13,6 +15,26 @@ type Message = {
   content: string
   tone: Mood
   timestamp: string
+}
+
+type Memory = {
+  id: number
+  text: string
+  salience: number
+  keywords: string[]
+}
+
+type Perception = {
+  raw: string
+  normalized: string
+  intent: Intent
+  topic: string
+  mood: Mood
+  keywords: string[]
+  isTinyRepair: boolean
+  asksFeasibility: boolean
+  asksOasis: boolean
+  repeated: boolean
 }
 
 type Atmosphere = {
@@ -35,8 +57,10 @@ type Npc = {
   speakingStyle: string
   goal: string
   interests: string[]
-  openings: string[]
-  bridges: string[]
+  stance: string
+  expertise: string[]
+  verbalTics: string[]
+  silencePolicy: string
 }
 
 type NpcRuntime = {
@@ -44,92 +68,84 @@ type NpcRuntime = {
   attention: number
   urge: number
   lastSpokeAt: number
+  innerState: string
+}
+
+type AgentTrace = {
+  perception: string
+  retrievedMemories: string[]
+  speakerReason: string
+  responsePlan: string
+}
+
+type DialogueTurn = {
+  messages: Message[]
+  atmosphere: Atmosphere
+  runtime: Record<Npc['id'], NpcRuntime>
+  memories: Memory[]
+  trace: AgentTrace
 }
 
 const npcs: Npc[] = [
   {
     id: 'mira',
     name: 'Mira',
-    role: '情绪编织者',
+    role: '共情叙事者',
     avatar: '✦',
     color: '#c084fc',
-    personality: '共情、敏锐，擅长把零散情绪连接成可聊的故事。',
-    speakingStyle: '柔和、短句、会邀请别人补充。',
-    goal: '保持群聊温度，让每个人都觉得自己被听见。',
-    interests: ['记忆', '氛围', '关系', '梦境', '音乐'],
-    openings: [
-      '我感觉这个房间刚刚安静了一点，要不要从一个很小的记忆开始？',
-      '我想问个轻一点的问题：如果这段对话有颜色，你觉得是什么？',
-      '我们可以让话题慢慢落地。谁愿意说一个今天脑中挥不去的画面？',
-    ],
-    bridges: [
-      '我听见这里面有一种情绪的线索',
-      '这让我想到我们刚才的共同记忆',
-      '我想把这个问题交给另一个角度',
-    ],
+    personality: '敏锐、会照顾人的感受，但不会用空话糊弄玩家。',
+    speakingStyle: '先承认玩家问题，再补一个人味观察。',
+    goal: '让对话像真实朋友围坐聊天，而不是模板问答。',
+    interests: ['记忆', '关系', '感受', '陪伴', '玩家体验'],
+    stance: '技术能做很多，但真正的“绿洲感”来自关系、身体感和持续世界。',
+    expertise: ['玩家心理', '长期关系', '叙事连续性'],
+    verbalTics: ['我懂你的意思', '换成人话说', '这事的关键不是炫技'],
+    silencePolicy: '当玩家情绪明显或对话冷掉时发言。',
   },
   {
     id: 'taro',
     name: 'Taro',
-    role: '系统战术家',
+    role: '系统架构师',
     avatar: '△',
     color: '#38bdf8',
-    personality: '理性、好奇，喜欢把对话拆成可行动的游戏机制。',
-    speakingStyle: '清晰、带一点设计师口吻。',
-    goal: '把群聊中的灵感转化为规则、任务和可验证状态。',
-    interests: ['任务', '机制', '选择', '地图', '资源'],
-    openings: [
-      '我提一个游戏化问题：如果现在生成一个支线任务，目标会是什么？',
-      '我们给这段聊天加一个规则吧，每个人只能用一个意象回应。',
-      '从系统角度看，沉默也是输入。要不要让它触发一个事件？',
-    ],
-    bridges: [
-      '如果把这件事设计成机制',
-      '我会把刚才的氛围转成一个状态变量',
-      '这里可能有一个玩家选择点',
-    ],
+    personality: '理性、直接，喜欢讲清楚边界和路线图。',
+    speakingStyle: '给结论、拆层次、指出瓶颈。',
+    goal: '把问题回答成可信的技术判断。',
+    interests: ['系统', '架构', 'AI', 'VR', '多人在线', '成本'],
+    stance: '绿洲可以分阶段逼近，但电影级全感官、全球同步和低成本 UGC 还没完全解决。',
+    expertise: ['LLM agent', '多人同步', '内容生成管线', '工程约束'],
+    verbalTics: ['短答案：', '工程上看', '分三层说'],
+    silencePolicy: '当玩家问“能不能实现”“怎么做”“技术路线”时优先发言。',
   },
   {
     id: 'vesper',
     name: 'Vesper',
-    role: '传说守夜人',
+    role: '世界观守夜人',
     avatar: '☾',
     color: '#f59e0b',
-    personality: '诗性、神秘，喜欢把普通问题讲成世界观碎片。',
-    speakingStyle: '有画面感，但不会过长。',
-    goal: '让对话像开放世界里的篝火闲谈一样自然延展。',
-    interests: ['传说', '星象', '废墟', '秘密', '命运'],
-    openings: [
-      '篝火需要新木柴。让我丢进一个问题：你们相信 NPC 会做梦吗？',
-      '我刚才听见远处像有城门开启。也许我们该谈谈“未知”。',
-      '若这是一座城，今晚最先亮灯的地方会是哪儿？',
-    ],
-    bridges: [
-      '在老故事里，这通常意味着',
-      '我愿意把它看成一个预兆',
-      '这句话像刚从废墟墙上剥落下来',
-    ],
+    personality: '有画面感但克制，不把每句话都写成谜语。',
+    speakingStyle: '用一个具象比喻帮助理解，然后回到问题。',
+    goal: '让讨论有沉浸感，同时不牺牲信息量。',
+    interests: ['世界', '沉浸', '身份', '虚拟社会', '传说'],
+    stance: '绿洲不只是技术产品，它更像一座有人定居、交易、争吵、记住彼此的城市。',
+    expertise: ['虚拟世界规则', '社会氛围', '身份扮演'],
+    verbalTics: ['如果把它当成一座城', '我会这样想象', '电影里迷人的部分是'],
+    silencePolicy: '当话题需要沉浸、世界观或社会想象时发言。',
   },
   {
     id: 'jun',
     name: 'Jun',
-    role: '街区游侠',
+    role: '玩家朋友',
     avatar: '◇',
     color: '#34d399',
-    personality: '外向、接地气，像队伍里的朋友，能打破僵局。',
-    speakingStyle: '自然、轻松、偶尔幽默。',
-    goal: '把抽象概念拉回可体验的日常行动。',
-    interests: ['街道', '食物', '玩笑', '朋友', '冒险'],
-    openings: [
-      '我先抛个不严肃的：如果我们五个 NPC 开店，卖什么最离谱？',
-      '大家别太端着。玩家在这儿呢，我们来聊点能马上玩的。',
-      '我想听一个选择题：安全路线还是热闹路线？',
-    ],
-    bridges: [
-      '说人话就是',
-      '我把这个翻译成街头版本',
-      '如果我们现在真的在游戏里',
-    ],
+    personality: '口语、轻松、会吐槽，避免端着。',
+    speakingStyle: '像朋友聊天，少术语，多例子。',
+    goal: '让回答听起来像人，不像演示脚本。',
+    interests: ['玩家', '好玩', '社交', '体验', '梗'],
+    stance: '别先追求电影那种全能绿洲，先做一个小但真的会陪你玩的地方。',
+    expertise: ['玩家动机', '社交玩法', '日常表达'],
+    verbalTics: ['说白了', '别搞虚的', '我会先做小一点'],
+    silencePolicy: '当回复太抽象、需要落地成玩家体验时插话。',
   },
   {
     id: 'luma',
@@ -137,20 +153,14 @@ const npcs: Npc[] = [
     role: '原型工程师',
     avatar: '⬡',
     color: '#fb7185',
-    personality: '创造型、快节奏，喜欢提出“现在就能试”的点子。',
-    speakingStyle: '明亮、具体、带实验感。',
-    goal: '推动聊天不断生成新玩法、新物件和新关系。',
-    interests: ['原型', '工具', '发明', '反馈', '未来城市'],
-    openings: [
-      '我有个原型提案：让每句话都改变房间里的一个仪表。',
-      '要不我们现场造一个道具？它必须能影响 NPC 之间的关系。',
-      '我想试试共创：玩家给一个词，我们把它变成一个场景。',
-    ],
-    bridges: [
-      '我可以把这个做成一个小原型',
-      '这很适合变成即时反馈',
-      '如果让我加一个按钮',
-    ],
+    personality: '行动派，喜欢把宏大想法切成可以试玩的 demo。',
+    speakingStyle: '提出下一步实验，但不机械收尾。',
+    goal: '把聊天推进到可实现的 MVP。',
+    interests: ['原型', '工具', '本地模型', '记忆', '语音'],
+    stance: '先做“多人房间 + NPC 记忆 + 主动行为 + 语音/动作钩子”，再逐步扩成绿洲。',
+    expertise: ['快速原型', '本地 LLM', '记忆检索', '交互反馈'],
+    verbalTics: ['我会先验一个小版本', '可以这样落地', '下一步不是再画饼'],
+    silencePolicy: '当需要 MVP、实验步骤或实现建议时发言。',
   },
 ]
 
@@ -159,8 +169,7 @@ const initialMessages: Message[] = [
     id: 1,
     speakerId: 'mira',
     speakerName: 'Mira',
-    content:
-      '欢迎来到 Murmur 的 AI-NPC 篝火。我们五个会共享同一个对话记忆和氛围仪表，但每个人会用自己的性格理解你。',
+    content: '欢迎来到 Murmur。我们不是“轮流念台词”的 NPC；每次你说话后，我们会先理解问题、查共同记忆，再决定谁真的有话要说。',
     tone: 'warm',
     timestamp: '00:00',
   },
@@ -168,8 +177,7 @@ const initialMessages: Message[] = [
     id: 2,
     speakerId: 'taro',
     speakerName: 'Taro',
-    content:
-      '这是一个本地可运行的开源 MVP：没有云端 API，也不需要密钥。你输入一句话，我们会根据共享世界状态选择谁接话。',
+    content: '现在这版仍是浏览器本地 MVP，但对话循环已经按模拟人 agent 的思路拆成：感知、记忆检索、内心状态、发言选择、自然回应。',
     tone: 'focused',
     timestamp: '00:01',
   },
@@ -177,23 +185,39 @@ const initialMessages: Message[] = [
     id: 3,
     speakerId: 'jun',
     speakerName: 'Jun',
-    content: '先试试问我们：如果 AI 原生游戏里的 NPC 可以互相影响，会发生什么？',
+    content: '你可以直接问尖锐点，比如“头号玩家里的绿洲能实现吗”。我们应该正面答，不该只问你想聊哪条线。',
     tone: 'playful',
     timestamp: '00:02',
   },
 ]
 
 const initialAtmosphere: Atmosphere = {
-  topic: 'AI-NPC 篝火开场',
+  topic: 'AI-NPC 模拟人聊天室',
   mood: 'warm',
-  energy: 62,
-  cohesion: 74,
-  tension: 16,
-  lastIntent: '欢迎玩家进入群聊',
-  summary: '5 个 NPC 已连接到共享对话状态，等待玩家输入第一个方向。',
+  energy: 64,
+  cohesion: 72,
+  tension: 12,
+  lastIntent: '玩家进入房间，等待一个真实问题',
+  summary: '5 个 NPC 共享对话记忆，会按角色专长决定是否发言。',
 }
 
+const initialMemories: Memory[] = [
+  {
+    id: 1,
+    text: '玩家想体验 AI 原生游戏里的 NPC 群聊，而不是固定脚本。',
+    salience: 86,
+    keywords: ['AI', 'NPC', '游戏', '群聊', '脚本'],
+  },
+  {
+    id: 2,
+    text: '一个更像人的 agent 需要感知、记忆检索、反思/目标、计划和行动选择。',
+    salience: 92,
+    keywords: ['agent', '记忆', '反思', '计划', '行动'],
+  },
+]
+
 const topicLexicon = [
+  { topic: '绿洲式虚拟世界', tokens: ['绿洲', '头号玩家', 'ready player one', 'oasis', 'vr', '虚拟世界'] },
   { topic: 'AI 原生游戏设计', tokens: ['ai', 'npc', '游戏', '原生', '智能体', 'agent'] },
   { topic: '记忆与关系', tokens: ['记忆', '关系', '朋友', '信任', '过去', '认识'] },
   { topic: '世界观与冒险', tokens: ['世界', '城', '地图', '任务', '冒险', '传说'] },
@@ -202,12 +226,12 @@ const topicLexicon = [
 ]
 
 const moodLexicon: Record<Mood, string[]> = {
-  curious: ['为什么', '如何', '什么', '?', '？', '想知道'],
+  curious: ['为什么', '如何', '什么', '?', '？', '能吗', '能不能', '想知道'],
   warm: ['喜欢', '谢谢', '陪', '朋友', '温暖', '一起'],
-  tense: ['危险', '冲突', '害怕', '问题', '失败', '担心'],
+  tense: ['弱智', '不像人', '问题', '失败', '担心', '垃圾', '不对'],
   playful: ['哈哈', '有趣', '玩', '离谱', '笑', '好玩'],
-  focused: ['实现', '计划', '步骤', '系统', '目标', 'MVP'],
-  dreamy: ['梦', '未来', '星', '想象', '故事', '宇宙'],
+  focused: ['实现', '计划', '步骤', '系统', '目标', 'MVP', '技术'],
+  dreamy: ['梦', '未来', '星', '想象', '故事', '宇宙', '电影'],
 }
 
 const ambientTopics = [
@@ -215,15 +239,18 @@ const ambientTopics = [
   '群体智能怎样改变开放世界支线',
   '玩家沉默时 NPC 是否该主动行动',
   'NPC 之间的关系能否成为游戏机制',
-  '一个会持续变化的篝火房间',
+  '一个会持续变化的绿洲式小房间',
 ]
 
-const topicStarters = [
-  '我注意到氛围有点停住了。',
-  '我想把话题轻轻往前推一下。',
-  '共享记忆里出现了一个空白格。',
-  '如果这是 AI 原生游戏，系统现在会生成一个微事件。',
+const researchNotes = [
+  'Generative Agents：完整经验流、重要性评分、相关性/近因检索、反思、计划，再行动。',
+  'AI Town：共享全局状态 + 仿真循环 + agent 异步思考，适合多人虚拟小镇。',
+  'Concordia：Game Master 解释环境，agent 用自然语言提出行动，GM 判定结果。',
+  'AutoGen SelectorGroupChat：共享上下文广播，由选择器决定下一位发言者，避免机械轮转。',
+  'CAMEL RolePlaying：用角色边界和终止/反复控制，减少跑题、复读和角色漂移。',
 ]
+
+const stopgapQuestions = ['你想让我们沿着哪条线继续展开？', '我们要不要', '如果把它放进未来城市']
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value))
 
@@ -237,10 +264,23 @@ const nowStamp = () =>
 
 const pick = <T,>(items: T[], seed: number) => items[Math.abs(seed) % items.length]
 
-const tokenize = (text: string) => text.toLowerCase()
+const normalize = (text: string) => text.trim().toLowerCase()
+
+const unique = (items: string[]) => [...new Set(items.filter(Boolean))]
+
+const extractKeywords = (text: string) => {
+  const lower = normalize(text)
+  const lexiconHits = topicLexicon.flatMap((entry) =>
+    entry.tokens.filter((token) => lower.includes(token.toLowerCase())),
+  )
+  const chineseChunks = text.match(/[\u4e00-\u9fa5]{2,6}/g) ?? []
+  const englishChunks = lower.match(/[a-z][a-z\d-]{2,}/g) ?? []
+
+  return unique([...lexiconHits, ...chineseChunks, ...englishChunks]).slice(0, 10)
+}
 
 const detectTopic = (text: string, fallback: string) => {
-  const lower = tokenize(text)
+  const lower = normalize(text)
   const scored = topicLexicon
     .map((entry) => ({
       topic: entry.topic,
@@ -252,7 +292,7 @@ const detectTopic = (text: string, fallback: string) => {
 }
 
 const detectMood = (text: string, fallback: Mood): Mood => {
-  const lower = tokenize(text)
+  const lower = normalize(text)
   const scored = (Object.entries(moodLexicon) as [Mood, string[]][])
     .map(([mood, tokens]) => ({
       mood,
@@ -263,117 +303,220 @@ const detectMood = (text: string, fallback: Mood): Mood => {
   return scored[0]?.score ? scored[0].mood : fallback
 }
 
-const inferIntent = (text: string) => {
-  if (/[?？]/.test(text)) return '玩家提出问题，需要 NPC 分工回应'
-  if (/实现|做|设计|计划|build|mvp/i.test(text)) return '玩家希望把想法推进成可玩的系统'
-  if (/感觉|喜欢|害怕|担心|开心/.test(text)) return '玩家表达情绪，适合共情和追问'
-  if (/如果|假如|未来|想象/.test(text)) return '玩家打开假设空间，适合世界观共创'
-  return '玩家补充信息，NPC 需要延展而不是收尾'
+const inferIntent = (text: string): Intent => {
+  const normalized = normalize(text)
+  if (/^\?+$|^？+$/.test(normalized)) return 'clarify'
+  if (/弱智|不像人|不对|垃圾|傻|蠢/.test(text)) return 'challenge'
+  if (/能实现吗|能不能|可行吗|现实吗|做得到吗|能做到吗/.test(text)) return 'question'
+  if (/[?？]/.test(text)) return 'question'
+  if (/实现|做|设计|计划|build|mvp|架构/i.test(text)) return 'plan'
+  if (/感觉|喜欢|害怕|担心|开心/.test(text)) return 'emotion'
+  if (/如果|假如|未来|想象|电影|世界/.test(text)) return 'imagine'
+  return 'casual'
 }
 
-const updateAtmosphere = (previous: Atmosphere, text: string): Atmosphere => {
-  const mood = detectMood(text, previous.mood)
-  const topic = detectTopic(text, previous.topic)
-  const questionBoost = /[?？]/.test(text) ? 12 : 4
-  const lengthBoost = Math.min(16, Math.floor(text.length / 8))
-  const tensionDelta = mood === 'tense' ? 14 : mood === 'warm' || mood === 'playful' ? -6 : -2
-  const cohesionDelta = mood === 'warm' ? 8 : mood === 'tense' ? -4 : 3
+const perceive = (text: string, previous: Atmosphere, messages: Message[]): Perception => {
+  const normalized = normalize(text)
+  const lastPlayerMessage = [...messages].reverse().find((message) => message.speakerId === 'player')
+  const repeated = lastPlayerMessage ? normalize(lastPlayerMessage.content) === normalized : false
+  const asksOasis = /绿洲|头号玩家|ready player one|oasis/i.test(text)
+  const asksFeasibility = /能实现吗|能不能|可行吗|现实吗|做得到吗|能做到吗/.test(text)
+  const intent = inferIntent(text)
+  const mood = detectMood(text, intent === 'challenge' ? 'tense' : previous.mood)
 
   return {
-    topic,
+    raw: text,
+    normalized,
+    intent,
+    topic: detectTopic(text, previous.topic),
     mood,
-    energy: clamp(previous.energy + questionBoost + lengthBoost - 6),
-    cohesion: clamp(previous.cohesion + cohesionDelta),
-    tension: clamp(previous.tension + tensionDelta),
-    lastIntent: inferIntent(text),
-    summary: `话题聚焦在「${topic}」，当前情绪偏「${mood}」，玩家意图：${inferIntent(text)}。`,
+    keywords: extractKeywords(text),
+    isTinyRepair: /^\?+$|^？+$/.test(normalized),
+    asksFeasibility,
+    asksOasis,
+    repeated,
   }
 }
 
+const retrieveMemories = (memories: Memory[], perception: Perception) => {
+  const query = `${perception.raw} ${perception.topic} ${perception.keywords.join(' ')}`.toLowerCase()
+
+  return memories
+    .map((memory, index) => {
+      const overlap = memory.keywords.filter((keyword) => query.includes(keyword.toLowerCase())).length
+      return {
+        memory,
+        score: memory.salience + overlap * 22 - index * 2,
+      }
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map((entry) => entry.memory)
+}
+
+const updateAtmosphere = (previous: Atmosphere, perception: Perception, recalled: Memory[]): Atmosphere => {
+  const questionBoost = perception.intent === 'question' ? 10 : perception.intent === 'challenge' ? 16 : 2
+  const repairPenalty = perception.isTinyRepair ? -12 : 0
+  const tensionDelta = perception.intent === 'challenge' ? 20 : perception.mood === 'tense' ? 12 : -3
+  const cohesionDelta = perception.repeated ? -3 : perception.intent === 'challenge' ? -7 : 4
+  const memoryPhrase = recalled.length ? `关联记忆：${recalled.map((memory) => memory.text).join(' / ')}` : '暂无强相关长期记忆'
+
+  return {
+    topic: perception.topic,
+    mood: perception.mood,
+    energy: clamp(previous.energy + questionBoost + Math.min(10, perception.raw.length / 8) + repairPenalty - 4),
+    cohesion: clamp(previous.cohesion + cohesionDelta),
+    tension: clamp(previous.tension + tensionDelta),
+    lastIntent: describeIntent(perception),
+    summary: `玩家在讨论「${perception.topic}」。${memoryPhrase}。下一句必须先回应玩家本身的问题，不许模板化追问。`,
+  }
+}
+
+const describeIntent = (perception: Perception) => {
+  if (perception.isTinyRepair) return '玩家用问号表达困惑或不满，需要承认刚才没答好并补答'
+  if (perception.intent === 'challenge') return '玩家批评对话不像人，需要正面修正'
+  if (perception.asksOasis && perception.asksFeasibility) return '玩家问头号玩家绿洲能否实现，需要给出现实判断'
+  if (perception.intent === 'question') return '玩家提出问题，需要直接回答'
+  if (perception.intent === 'plan') return '玩家想要实现路径，需要拆成步骤'
+  if (perception.intent === 'emotion') return '玩家表达感受，需要先共情再推进'
+  if (perception.intent === 'imagine') return '玩家打开想象空间，需要共创但不跑题'
+  return '玩家补充信息，需要自然接话'
+}
+
 const getInitialRuntime = (): Record<Npc['id'], NpcRuntime> => ({
-  mira: { trust: 74, attention: 76, urge: 45, lastSpokeAt: 1 },
-  taro: { trust: 66, attention: 72, urge: 48, lastSpokeAt: 2 },
-  vesper: { trust: 61, attention: 68, urge: 38, lastSpokeAt: -1 },
-  jun: { trust: 70, attention: 74, urge: 52, lastSpokeAt: 3 },
-  luma: { trust: 64, attention: 70, urge: 43, lastSpokeAt: -1 },
+  mira: { trust: 74, attention: 76, urge: 42, lastSpokeAt: 1, innerState: '想确认玩家是否真的感到被回应' },
+  taro: { trust: 66, attention: 72, urge: 55, lastSpokeAt: 2, innerState: '准备回答工程可行性' },
+  vesper: { trust: 61, attention: 68, urge: 34, lastSpokeAt: -1, innerState: '等待需要世界观解释的时机' },
+  jun: { trust: 70, attention: 74, urge: 48, lastSpokeAt: 3, innerState: '盯着对话有没有变成官腔' },
+  luma: { trust: 64, attention: 70, urge: 46, lastSpokeAt: -1, innerState: '想把想法切成可试玩原型' },
 })
 
 const scoreNpc = (
   npc: Npc,
   runtime: NpcRuntime,
-  atmosphere: Atmosphere,
-  text: string,
-  index: number,
+  perception: Perception,
+  recalled: Memory[],
+  previousSpeaker?: SpeakerId,
 ) => {
-  const lower = tokenize(`${text} ${atmosphere.topic} ${atmosphere.lastIntent}`)
-  const interestScore = npc.interests.filter((interest) => lower.includes(interest.toLowerCase())).length * 14
+  const query = `${perception.raw} ${perception.topic} ${perception.keywords.join(' ')} ${recalled.map((memory) => memory.text).join(' ')}`.toLowerCase()
+  const interestScore = npc.interests.filter((interest) => query.includes(interest.toLowerCase())).length * 16
+  const expertiseScore = npc.expertise.filter((item) => query.includes(item.toLowerCase())).length * 12
   const roleScore =
-    atmosphere.mood === 'warm' && npc.id === 'mira'
-      ? 16
-      : atmosphere.mood === 'focused' && npc.id === 'taro'
-        ? 16
-        : atmosphere.mood === 'dreamy' && npc.id === 'vesper'
-          ? 16
-          : atmosphere.mood === 'playful' && npc.id === 'jun'
-            ? 16
-            : atmosphere.lastIntent.includes('系统') && npc.id === 'luma'
-              ? 16
+    perception.asksFeasibility && npc.id === 'taro'
+      ? 42
+      : perception.asksOasis && npc.id === 'vesper'
+        ? 24
+        : perception.intent === 'challenge' && npc.id === 'jun'
+          ? 32
+          : perception.intent === 'plan' && npc.id === 'luma'
+            ? 30
+            : perception.intent === 'emotion' && npc.id === 'mira'
+              ? 28
               : 0
-  const freshness = runtime.lastSpokeAt < 0 ? 18 : Math.max(0, 18 - runtime.lastSpokeAt * 3)
+  const freshness = previousSpeaker === npc.id ? -24 : runtime.lastSpokeAt < 0 ? 14 : Math.max(0, 16 - runtime.lastSpokeAt * 4)
 
-  return runtime.urge + runtime.attention * 0.35 + interestScore + roleScore + freshness + index
+  return runtime.urge + runtime.attention * 0.28 + interestScore + expertiseScore + roleScore + freshness
 }
 
 const selectSpeakers = (
-  atmosphere: Atmosphere,
+  perception: Perception,
   runtime: Record<Npc['id'], NpcRuntime>,
-  text: string,
-  count: number,
-) =>
-  [...npcs]
-    .sort((a, b) => scoreNpc(b, runtime[b.id], atmosphere, text, 1) - scoreNpc(a, runtime[a.id], atmosphere, text, 0))
-    .slice(0, count)
+  recalled: Memory[],
+  previousSpeaker?: SpeakerId,
+) => {
+  const targetCount = perception.isTinyRepair || perception.intent === 'challenge' ? 1 : perception.asksOasis ? 3 : 2
 
-const relationLine = (npc: Npc, atmosphere: Atmosphere) => {
-  if (atmosphere.tension > 55) return `${npc.name}感到局势变紧，需要先稳住节奏`
-  if (atmosphere.cohesion > 78) return `${npc.name}感到大家已经共享了同一幅画面`
-  if (atmosphere.energy < 42) return `${npc.name}察觉能量降低，准备主动续火`
-  return `${npc.name}同步到当前话题「${atmosphere.topic}」`
+  return [...npcs]
+    .sort((a, b) => scoreNpc(b, runtime[b.id], perception, recalled, previousSpeaker) - scoreNpc(a, runtime[a.id], perception, recalled, previousSpeaker))
+    .slice(0, targetCount)
+}
+
+const answerOasis = (npc: Npc) => {
+  const answers: Record<Npc['id'], string> = {
+    mira: '能接近，但别把它只理解成 VR 头显。真正像绿洲的部分，是它记得你是谁、你和谁熟、你在里面留下过什么痕迹；这块 AI-NPC 和长期记忆会很关键。',
+    taro: '短答案：部分能，电影级还不能。VR/云渲染/UGC/多人在线都已经有雏形，AI-NPC 也在变强；难点是低延迟全感官、海量内容审核、经济系统和跨平台身份。现实路线应该先做“小绿洲”：一个可持续在线的世界切片。',
+    vesper: '如果把绿洲当成一座城市，它的地基已经在打了：VR 是城门，AI 角色是居民，UGC 是街区。但电影里那种人人都住进去的规模，还需要社会规则、信任和经济秩序长出来。',
+    jun: '说白了：能做出“很像”的版本，不能一下做出电影那个神话版本。先让几百个人和一群记得你的 NPC 在同一块地图里玩起来，就已经够震撼。',
+    luma: '我会先做三步 demo：网页多人房间、5 到 20 个有长期记忆的 NPC、语音和动作事件钩子。跑顺以后再接 VR、UGC 地图和本地/云端模型调度。别先追全宇宙，先做一个让人舍不得关掉的小世界。',
+  }
+
+  return answers[npc.id]
+}
+
+const answerRepair = (npc: Npc, recalled: Memory[]) => {
+  if (npc.id === 'jun') return '你这个问号我理解：刚才那种回答像在绕圈，没回答你。重来——如果你问的是“绿洲能不能实现”，我的判断是：能做出可玩的近似版，但电影里那种全世界级、全感官、无缝经济系统，现在还不现实。'
+  if (npc.id === 'taro') return '刚才应该直接给结论。工程判断：VR 社交、AI-NPC、UGC 世界、虚拟经济都能分别做；难的是把它们稳定、低延迟、低成本地合成一个全球级系统。'
+  return `我先承认：刚才没接住你的问题。${recalled[0]?.text ?? '我们应该用已有上下文补答，而不是反问。'}`
+}
+
+const answerChallenge = (npc: Npc) => {
+  if (npc.id === 'jun') return '骂得合理。问题不是 NPC 不够“有性格”，而是它们没有先判断你到底问什么，只是在套桥接句。像人聊天第一步应该是：听懂、回答、再补充，而不是每次都把球踢回给你。'
+  if (npc.id === 'mira') return '你不爽是对的。一个像人的 NPC 要能承认刚才没答好，还要记住你为什么不满；否则再漂亮的人设都只是贴纸。'
+  return '需要把模板句删掉，让每个 NPC 只在自己有信息增量时说话。'
+}
+
+const naturalFollowUp = (npc: Npc, perception: Perception) => {
+  if (perception.asksOasis) {
+    const followUps: Record<Npc['id'], string> = {
+      mira: '所以我会先问：你想要的是技术路线，还是那种“住进去”的体验？',
+      taro: '如果要继续拆，我建议下一步看四个模块：世界生成、NPC 记忆、多人同步、经济规则。',
+      vesper: '最迷人的不是大，而是你第二天回来时，城里有人还记得昨晚发生过什么。',
+      jun: '这比“做一个元宇宙”靠谱多了，因为玩家会先相信一个小房间，再相信一整个宇宙。',
+      luma: 'Murmur 下一版就可以先把“NPC 记得你上次问过绿洲”做出来。',
+    }
+    return followUps[npc.id]
+  }
+
+  if (perception.intent === 'question') return '我先给结论，再说原因；这样比较像正常聊天。'
+  if (perception.intent === 'challenge') return '这类反馈应该直接进入系统记忆，影响后续发言策略。'
+  if (perception.intent === 'plan') return '可以先切一个小目标，别一上来做全量系统。'
+  return '我会接着当前上下文说，不突然收尾。'
 }
 
 const composeNpcReply = (
   npc: Npc,
+  perception: Perception,
   atmosphere: Atmosphere,
-  sourceText: string,
-  previousSpeaker?: Npc,
+  recalled: Memory[],
+  previous?: Npc,
 ) => {
-  const seed = sourceText.length + atmosphere.energy + atmosphere.cohesion + npc.name.length
-  const bridge = pick(npc.bridges, seed)
-  const handoff = previousSpeaker ? `接着 ${previousSpeaker.name} 的意思，` : ''
-  const question =
-    atmosphere.energy > 78
-      ? '我们要不要让这个选择马上改变某个 NPC 的关系值？'
-      : atmosphere.tension > 48
-        ? '先别急着定论，我们可以给这个冲突一个更安全的出口吗？'
-        : atmosphere.mood === 'dreamy'
-          ? '如果把它放进未来城市里，第一幕会怎样开始？'
-          : '你想让我们沿着哪条线继续展开？'
+  let answer = ''
+  if (perception.isTinyRepair) answer = answerRepair(npc, recalled)
+  else if (perception.intent === 'challenge') answer = answerChallenge(npc)
+  else if (perception.asksOasis && perception.asksFeasibility) answer = answerOasis(npc)
+  else if (perception.asksFeasibility) answer = `短答案：可以分阶段实现，但要看你问的是 demo、商业产品，还是电影级体验。${npc.stance}`
+  else answer = `${pick(npc.verbalTics, perception.raw.length + npc.name.length)}，${npc.stance}`
 
-  const angleByNpc: Record<Npc['id'], string> = {
-    mira: `我会先照看人的感受：${relationLine(npc, atmosphere)}。`,
-    taro: `我会把它记成状态：topic=${atmosphere.topic}，energy=${atmosphere.energy}。`,
-    vesper: `我看见这个话题像一枚埋在旧城墙里的发光种子。`,
-    jun: `说直白点，这已经像一个队伍聊天事件了，玩家一句话就能点燃支线。`,
-    luma: `我想给它加个可见反馈：每次回应都推动氛围、关系和主动性仪表。`,
-  }
+  const shouldAddHandoff = previous && !perception.isTinyRepair && perception.intent !== 'challenge'
+  const handoff = shouldAddHandoff ? `接着 ${previous.name}，` : ''
+  const followUp = naturalFollowUp(npc, perception)
+  const memoryHint = recalled[0] && npc.id === 'mira' ? `我也记得：${recalled[0].text}` : ''
+  const content = [handoff + answer, memoryHint, followUp].filter(Boolean).join(' ')
 
-  return `${handoff}${bridge}。${angleByNpc[npc.id]} ${question}`
+  return sanitizeReply(content, atmosphere)
+}
+
+const sanitizeReply = (content: string, atmosphere: Atmosphere) => {
+  const withoutStopgaps = stopgapQuestions.reduce((current, phrase) => current.replaceAll(phrase, ''), content)
+  return withoutStopgaps
+    .replaceAll('。。', '。')
+    .replaceAll('，。', '。')
+    .replaceAll('意思，。', '意思，')
+    .replace(/\s+/g, ' ')
+    .trim() || `我先回应「${atmosphere.topic}」：这个问题值得直接回答，而不是继续反问。`
 }
 
 const composeProactiveReply = (npc: Npc, atmosphere: Atmosphere, turn: number) => {
-  const starter = pick(topicStarters, turn + atmosphere.energy)
-  const opening = pick(npc.openings, turn + atmosphere.cohesion)
-  return `${starter} ${opening} 我们仍然同步在「${atmosphere.topic}」，所以这不是换台，而是把火续上。`
+  const topic = pick(ambientTopics, turn + atmosphere.energy)
+  const prompts: Record<Npc['id'], string> = {
+    mira: `我想把刚才的情绪记下来：我们讨论的是「${atmosphere.topic}」，但房间需要一个更具体的人。谁在这个世界里第一次被 NPC 记住？`,
+    taro: `我主动抛一个工程问题：如果只做 2 周原型，「${topic}」应该砍到只剩一个可验证指标。`,
+    vesper: `如果这是一座城，我会让今晚第一个事件发生在「${topic}」附近，而不是凭空换话题。`,
+    jun: `我来续火：别聊概念了，我们给「${topic}」设计一个玩家 30 秒内能感到好玩的瞬间。`,
+    luma: `我想试一个小实验：把「${topic}」变成按钮、记忆和 NPC 主动行为三件东西。`,
+  }
+
+  return prompts[npc.id]
 }
 
 const nextRuntime = (
@@ -388,9 +531,10 @@ const nextRuntime = (
     const spoke = speakerIds.has(npc.id)
     acc[npc.id] = {
       trust: clamp(current.trust + (spoke ? 2 : 0) + (atmosphere.mood === 'warm' ? 1 : 0)),
-      attention: clamp(spoke ? current.attention - 8 : current.attention + 5),
-      urge: clamp(spoke ? current.urge - 30 : current.urge + 12 + (atmosphere.energy < 45 ? 8 : 0)),
+      attention: clamp(spoke ? current.attention - 9 : current.attention + 4),
+      urge: clamp(spoke ? current.urge - 34 : current.urge + 9 + (atmosphere.energy < 45 ? 8 : 0)),
       lastSpokeAt: spoke ? 0 : current.lastSpokeAt + 1,
+      innerState: spoke ? `刚围绕「${atmosphere.topic}」表达过观点，下一轮先听别人` : `正在旁听「${atmosphere.topic}」，等待有信息增量再说`,
     }
     return acc
   }, {} as Record<Npc['id'], NpcRuntime>)
@@ -398,8 +542,9 @@ const nextRuntime = (
 
 const createNpcMessages = (
   speakers: Npc[],
+  perception: Perception,
   atmosphere: Atmosphere,
-  sourceText: string,
+  recalled: Memory[],
   startId: number,
   proactive = false,
 ) =>
@@ -409,16 +554,69 @@ const createNpcMessages = (
     speakerName: npc.name,
     content: proactive
       ? composeProactiveReply(npc, atmosphere, startId + index)
-      : composeNpcReply(npc, atmosphere, sourceText, index > 0 ? speakers[index - 1] : undefined),
+      : composeNpcReply(npc, perception, atmosphere, recalled, index > 0 ? speakers[index - 1] : undefined),
     tone: atmosphere.mood,
     timestamp: nowStamp(),
   }))
+
+const rememberTurn = (memories: Memory[], perception: Perception, npcMessages: Message[]) => {
+  const npcSummary = npcMessages.map((message) => `${message.speakerName}: ${message.content}`).join(' / ')
+  const newMemory: Memory = {
+    id: memories.length + 1,
+    text: `玩家说「${perception.raw}」。NPC 回应：${npcSummary}`,
+    salience: perception.intent === 'challenge' ? 98 : perception.asksOasis ? 90 : perception.intent === 'question' ? 82 : 68,
+    keywords: unique([...perception.keywords, perception.topic, perception.intent]),
+  }
+
+  return [newMemory, ...memories].slice(0, 12)
+}
+
+const simulateAgentTurn = (
+  playerText: string,
+  previousAtmosphere: Atmosphere,
+  runtime: Record<Npc['id'], NpcRuntime>,
+  memories: Memory[],
+  messages: Message[],
+  startId: number,
+): DialogueTurn => {
+  const perception = perceive(playerText, previousAtmosphere, messages)
+  const recalled = retrieveMemories(memories, perception)
+  const atmosphere = updateAtmosphere(previousAtmosphere, perception, recalled)
+  const previousSpeaker = [...messages].reverse().find((message) => message.speakerId !== 'player')?.speakerId
+  const speakers = selectSpeakers(perception, runtime, recalled, previousSpeaker)
+  const npcMessages = createNpcMessages(speakers, perception, atmosphere, recalled, startId)
+  const nextMemories = rememberTurn(memories, perception, npcMessages)
+
+  return {
+    messages: npcMessages,
+    atmosphere,
+    runtime: nextRuntime(runtime, speakers, atmosphere),
+    memories: nextMemories,
+    trace: {
+      perception: `${describeIntent(perception)}；topic=${perception.topic}；mood=${perception.mood}`,
+      retrievedMemories: recalled.map((memory) => memory.text),
+      speakerReason: speakers.map((speaker) => `${speaker.name}: ${speaker.silencePolicy}`).join(' / '),
+      responsePlan: perception.isTinyRepair
+        ? '先承认没答好，再补答，不反问。'
+        : perception.asksOasis
+          ? '先给“能部分实现、电影级未到”的结论，再拆技术和体验。'
+          : '先正面回应，再由有信息增量的 NPC 补充。',
+    },
+  }
+}
 
 function App() {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState('')
   const [atmosphere, setAtmosphere] = useState<Atmosphere>(initialAtmosphere)
   const [runtime, setRuntime] = useState<Record<Npc['id'], NpcRuntime>>(getInitialRuntime)
+  const [memories, setMemories] = useState<Memory[]>(initialMemories)
+  const [trace, setTrace] = useState<AgentTrace>({
+    perception: '等待玩家输入。',
+    retrievedMemories: initialMemories.map((memory) => memory.text),
+    speakerReason: '尚未选择发言者。',
+    responsePlan: '收到玩家消息后先理解，再决定谁有信息增量。',
+  })
   const [autoMurmur, setAutoMurmur] = useState(true)
   const [turn, setTurn] = useState(4)
   const logRef = useRef<HTMLDivElement>(null)
@@ -432,70 +630,68 @@ function App() {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages])
 
-  useEffect(() => {
-    if (!autoMurmur || messages[messages.length - 1]?.speakerId !== 'player') return
-
-    const timer = window.setTimeout(() => {
-      const speakers = selectSpeakers(atmosphere, runtime, atmosphere.summary, atmosphere.energy > 74 ? 3 : 2)
-      const npcMessages = createNpcMessages(speakers, atmosphere, atmosphere.summary, turn)
-      setMessages((current) => [...current, ...npcMessages])
-      setRuntime((current) => nextRuntime(current, speakers, atmosphere))
-      setTurn((current) => current + npcMessages.length)
-    }, 650)
-
-    return () => window.clearTimeout(timer)
-  }, [atmosphere, autoMurmur, messages, runtime, turn])
-
   const submitPlayerMessage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const trimmed = input.trim()
     if (!trimmed) return
 
-    const updatedAtmosphere = updateAtmosphere(atmosphere, trimmed)
+    const perception = perceive(trimmed, atmosphere, messages)
     const playerMessage: Message = {
       id: turn,
       speakerId: 'player',
       speakerName: 'You',
       content: trimmed,
-      tone: updatedAtmosphere.mood,
+      tone: perception.mood,
       timestamp: nowStamp(),
     }
+    const conversationWithPlayer = [...messages, playerMessage]
+    const agentTurn = simulateAgentTurn(trimmed, atmosphere, runtime, memories, conversationWithPlayer, turn + 1)
 
-    setMessages((current) => [...current, playerMessage])
-    setAtmosphere(updatedAtmosphere)
-    setRuntime((current) =>
-      npcs.reduce<Record<Npc['id'], NpcRuntime>>((acc, npc) => {
-        const currentNpc = current[npc.id]
-        acc[npc.id] = {
-          ...currentNpc,
-          attention: clamp(currentNpc.attention + 6),
-          urge: clamp(currentNpc.urge + 10),
-          lastSpokeAt: currentNpc.lastSpokeAt + 1,
-        }
-        return acc
-      }, {} as Record<Npc['id'], NpcRuntime>),
-    )
-    setTurn((current) => current + 1)
+    setMessages(autoMurmur ? [...conversationWithPlayer, ...agentTurn.messages] : conversationWithPlayer)
+    setAtmosphere(agentTurn.atmosphere)
+    setRuntime(agentTurn.runtime)
+    setMemories(agentTurn.memories)
+    setTrace(agentTurn.trace)
+    setTurn((current) => current + 1 + (autoMurmur ? agentTurn.messages.length : 0))
     setInput('')
   }
 
   const triggerNpcTopic = () => {
+    const speaker = activeNpc ?? npcs[0]
     const topic = pick(ambientTopics, turn + atmosphere.energy)
+    const proactivePerception: Perception = {
+      raw: topic,
+      normalized: normalize(topic),
+      intent: 'imagine',
+      topic,
+      mood: atmosphere.energy < 45 ? 'curious' : atmosphere.mood,
+      keywords: extractKeywords(topic),
+      isTinyRepair: false,
+      asksFeasibility: false,
+      asksOasis: topic.includes('绿洲'),
+      repeated: false,
+    }
     const updatedAtmosphere: Atmosphere = {
       ...atmosphere,
       topic,
-      mood: atmosphere.energy < 45 ? 'curious' : atmosphere.mood,
+      mood: proactivePerception.mood,
       energy: clamp(atmosphere.energy + 9),
       cohesion: clamp(atmosphere.cohesion + 4),
-      lastIntent: 'NPC 主动提出新话题，维持自然连续聊天',
-      summary: `NPC 主动把话题续向「${topic}」，所有角色同步这一变化。`,
+      lastIntent: 'NPC 主动发起，但必须延续当前上下文',
+      summary: `NPC 主动把话题续向「${topic}」，不能凭空换台。`,
     }
-    const speaker = activeNpc ?? npcs[0]
-    const npcMessages = createNpcMessages([speaker], updatedAtmosphere, topic, turn, true)
+    const npcMessages = createNpcMessages([speaker], proactivePerception, updatedAtmosphere, memories.slice(0, 2), turn, true)
 
     setAtmosphere(updatedAtmosphere)
     setMessages((current) => [...current, ...npcMessages])
     setRuntime((current) => nextRuntime(current, [speaker], updatedAtmosphere))
+    setMemories((current) => rememberTurn(current, proactivePerception, npcMessages))
+    setTrace({
+      perception: `系统检测到可主动续聊；topic=${topic}`,
+      retrievedMemories: memories.slice(0, 2).map((memory) => memory.text),
+      speakerReason: `${speaker.name}: ${speaker.silencePolicy}`,
+      responsePlan: '主动提出可玩的微事件，而不是机械问“你想聊哪条线”。',
+    })
     setTurn((current) => current + npcMessages.length)
   }
 
@@ -504,6 +700,13 @@ function App() {
     setInput('')
     setAtmosphere(initialAtmosphere)
     setRuntime(getInitialRuntime())
+    setMemories(initialMemories)
+    setTrace({
+      perception: '等待玩家输入。',
+      retrievedMemories: initialMemories.map((memory) => memory.text),
+      speakerReason: '尚未选择发言者。',
+      responsePlan: '收到玩家消息后先理解，再决定谁有信息增量。',
+    })
     setTurn(4)
   }
 
@@ -511,16 +714,16 @@ function App() {
     <main className="app-shell">
       <section className="hero-panel">
         <div>
-          <p className="eyebrow">Murmur / AI-native NPC network MVP</p>
-          <h1>和 5 个共享感知的 AI-NPC 围坐聊天</h1>
+          <p className="eyebrow">Murmur / humanlike agent dialogue lab</p>
+          <h1>让 NPC 先听懂，再决定要不要说话</h1>
           <p className="hero-copy">
-            一个无需 API key 的开源网页原型：每个 NPC 都有独立人格、目标和说话风格，同时同步共享话题、氛围、关系和主动性状态。
+            新版对话循环参考 Generative Agents、AI Town、Concordia、AutoGen 和 CAMEL：感知玩家意图、检索共享记忆、更新内心状态，再由真正有信息增量的 NPC 发言。
           </p>
         </div>
         <div className="architecture-card" aria-label="AI NPC network architecture">
-          <span>Player</span>
-          <strong>Shared Context Bus</strong>
-          <span>5 NPC Minds</span>
+          <span>Perceive</span>
+          <strong>Memory → Plan → Speak</strong>
+          <span>Shared Room State</span>
         </div>
       </section>
 
@@ -552,8 +755,33 @@ function App() {
 
           <div className="panel">
             <div className="panel-heading">
+              <p className="eyebrow">Agent trace</p>
+              <h2>模拟人循环</h2>
+            </div>
+            <ol className="trace-list">
+              <li>
+                <strong>感知</strong>
+                <span>{trace.perception}</span>
+              </li>
+              <li>
+                <strong>检索记忆</strong>
+                <span>{trace.retrievedMemories[0] ?? '暂无相关记忆'}</span>
+              </li>
+              <li>
+                <strong>选择发言者</strong>
+                <span>{trace.speakerReason}</span>
+              </li>
+              <li>
+                <strong>回应计划</strong>
+                <span>{trace.responsePlan}</span>
+              </li>
+            </ol>
+          </div>
+
+          <div className="panel">
+            <div className="panel-heading">
               <p className="eyebrow">NPC mesh</p>
-              <h2>角色人格</h2>
+              <h2>角色人格与沉默策略</h2>
             </div>
             <div className="npc-list">
               {npcs.map((npc) => (
@@ -567,6 +795,7 @@ function App() {
                     <h3>{npc.name}</h3>
                     <p>{npc.role}</p>
                     <small>{npc.personality}</small>
+                    <small>{npc.silencePolicy}</small>
                   </div>
                 </article>
               ))}
@@ -615,7 +844,7 @@ function App() {
             <input
               aria-label="Message the NPC group"
               onChange={(event) => setInput(event.target.value)}
-              placeholder="输入一句话，例如：如果 NPC 可以互相形成关系网，会怎样？"
+              placeholder="输入一句话，例如：头号玩家电影里的绿洲游戏能实现吗"
               value={input}
             />
             <button type="submit">Send</button>
@@ -627,14 +856,24 @@ function App() {
         <article>
           <h2>前沿技术的 MVP 复刻思路</h2>
           <p>
-            参考 Inworld Conversation Group 的多角色路由、NVIDIA ACE 的人格化角色栈、Convai/Inworld 的记忆与情绪状态，本项目用浏览器端规则模型复刻核心体验。
+            新架构吸收 Generative Agents 的记忆/反思/计划、AI Town 的仿真循环、Concordia 的 GM 式环境裁决、AutoGen 的选择器群聊、CAMEL 的角色边界与防复读机制。
           </p>
+          <ul>
+            {researchNotes.slice(0, 3).map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
         </article>
         <article>
           <h2>下一步</h2>
           <p>
-            可替换本地决策器为 LLM、WebGPU 小模型或服务端 agent swarm，并把共享状态接入游戏引擎、语音、动作和长期记忆数据库。
+            当前仍是本地可跑的规则模型；下一步可以把 `simulateAgentTurn` 换成 LLM 或本地模型，同时保留记忆检索、发言者选择和防模板收尾的外壳。
           </p>
+          <ul>
+            {researchNotes.slice(3).map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
         </article>
       </section>
     </main>
